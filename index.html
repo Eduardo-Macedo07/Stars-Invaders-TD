@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#05060f">
+  <title>Defensores da Nave-Mãe</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Exo+2:wght@500;700;800&display=swap">
+  <link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- HUD da partida -->
+  <div id="hud" class="hidden">
+    <div id="topbar">
+      <div class="stat money" title="Créditos"><span class="ico">◆</span><b id="money">0</b></div>
+      <div class="stat lives" title="Casco da nave-mãe"><span class="ico">✚</span><b id="lives">100</b></div>
+      <div class="stat wave" title="Onda"><span class="ico">≋</span><b id="wave">0/20</b></div>
+      <div class="spacer"></div>
+      <button id="abilityBtn" class="small ability hidden" title="Chuva de Plasma (Q)">☄ <span id="abilityTxt">Pronta</span></button>
+      <button id="speedBtn" class="small" title="Velocidade (F)">x1</button>
+      <button id="pauseBtn" class="small" title="Pausar (Esc)">❚❚</button>
+    </div>
+    <div id="shop"></div>
+    <button id="waveBtn" title="Iniciar onda (Espaço)">▶ Iniciar onda</button>
+    <div id="unitpanel" class="hidden"></div>
+    <div id="toast"></div>
+  </div>
+
+  <!-- Menu inicial -->
+  <div id="home" class="overlay">
+    <div class="panel title">
+      <h1><span>Defensores da</span><span>Nave-Mãe</span></h1>
+      <p class="tagline">Os invasores seguem as rotas até a nave-mãe. Posicione seus defensores e não deixe nenhum passar.</p>
+      <button id="playBtn" class="big">Jogar</button>
+      <button id="howBtn" class="secondary">Como jogar</button>
+      <p id="homeBest" class="muted"></p>
+    </div>
+  </div>
+
+  <!-- Escolha de mapa -->
+  <div id="maps" class="overlay hidden">
+    <div class="panel wide">
+      <h2>Escolha o setor</h2>
+      <p class="muted">Vença as 20 ondas de um setor para liberar o próximo.</p>
+      <div id="maplist"></div>
+      <button id="mapsBack" class="secondary">Voltar</button>
+    </div>
+  </div>
+
+  <!-- Como jogar -->
+  <div id="how" class="overlay hidden">
+    <div class="panel">
+      <h2>Como jogar</h2>
+      <ul class="howlist">
+        <li>Os invasores saem do portal e seguem o caminho até a <b>nave-mãe</b>. Cada um que chega danifica o casco.</li>
+        <li>Escolha um defensor no painel e toque/clique num lugar livre fora do caminho para posicioná-lo.</li>
+        <li>O <b>Viajante Espacial</b> é o mais caro e mais forte, e tem a habilidade <b>Chuva de Plasma</b>. Só pode existir um.</li>
+        <li>Cada invasor derrotado solta <b>créditos</b>. Ao fim de cada onda você ganha um bônus.</li>
+        <li>Toque num defensor para <b>melhorar</b> (até o nível 3) ou <b>vender</b>.</li>
+        <li>Atalhos: <kbd>Espaço</kbd> inicia a onda, <kbd>F</kbd> acelera, <kbd>Q</kbd> usa a habilidade, <kbd>Esc</kbd> pausa.</li>
+      </ul>
+      <button id="howBack">Entendi</button>
+    </div>
+  </div>
+
+  <!-- Pausa -->
+  <div id="pause" class="overlay hidden">
+    <div class="panel">
+      <h2>Pausado</h2>
+      <button id="resumeBtn">Continuar</button>
+      <button id="restartBtn" class="secondary">Recomeçar setor</button>
+      <button id="quitBtn" class="secondary">Sair para os setores</button>
+    </div>
+  </div>
+
+  <!-- Fim de partida -->
+  <div id="result" class="overlay hidden">
+    <div class="panel">
+      <h2 id="resultTitle">Vitória!</h2>
+      <div id="resultStats"></div>
+      <button id="againBtn">Jogar de novo</button>
+      <button id="resultMaps" class="secondary">Escolher setor</button>
+    </div>
+  </div>
+
+  <div id="rotate" class="hidden">Gire o celular para jogar na horizontal ↻</div>
+
+  <script src="js/audio.js?v=1"></script>
+  <script src="js/data.js?v=1"></script>
+  <script src="js/art.js?v=1"></script>
+  <script src="js/game.js?v=1"></script>
+</body>
+</html>
