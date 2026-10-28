@@ -9,7 +9,7 @@
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Exo+2:wght@500;700;800&display=swap">
-  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -21,7 +21,7 @@
       <div class="stat lives" title="Casco da nave-mãe"><span class="ico">✚</span><b id="lives">100</b></div>
       <div class="stat wave" title="Onda"><span class="ico">≋</span><b id="wave">0/20</b></div>
       <div class="spacer"></div>
-      <button id="abilityBtn" class="small ability hidden" title="Chuva de Plasma (Q)">☄ <span id="abilityTxt">Pronta</span></button>
+      <div id="abilities"></div>
       <button id="speedBtn" class="small" title="Velocidade (F)">x1</button>
       <button id="pauseBtn" class="small" title="Pausar (Esc)">❚❚</button>
     </div>
@@ -59,10 +59,10 @@
       <ul class="howlist">
         <li>Os invasores saem do portal e seguem o caminho até a <b>nave-mãe</b>. Cada um que chega danifica o casco.</li>
         <li>Escolha um defensor no painel e toque/clique num lugar livre fora do caminho para posicioná-lo.</li>
-        <li>O <b>Viajante Espacial</b> é o mais caro e mais forte, e tem a habilidade <b>Chuva de Plasma</b>. Só pode existir um.</li>
+        <li>Há dois heróis, cada um com uma habilidade especial: o <b>Viajante Espacial</b> (<b>Chuva de Plasma</b>) e a <b>Gosma Gigante</b> (<b>Rio de Gosma</b>, que paralisa um trecho do caminho). Cada herói só pode ser posicionado uma vez.</li>
         <li>Cada invasor derrotado solta <b>créditos</b>. Ao fim de cada onda você ganha um bônus.</li>
-        <li>Toque num defensor para <b>melhorar</b> (até o nível 3) ou <b>vender</b>.</li>
-        <li>Atalhos: <kbd>Espaço</kbd> inicia a onda, <kbd>F</kbd> acelera, <kbd>Q</kbd> usa a habilidade, <kbd>Esc</kbd> pausa.</li>
+        <li>Toque num defensor para abrir a <b>árvore de evolução</b>. Cada um tem vários caminhos de 5 níveis, mas só dá para seguir <b>um</b>: ao comprar o 1º nível de um caminho, os outros são bloqueados. O nível 5 dos soldados libera uma <b>SUPER habilidade</b>.</li>
+        <li>Atalhos: <kbd>Espaço</kbd> inicia a onda, <kbd>F</kbd> acelera, <kbd>Q</kbd> e <kbd>E</kbd> usam as habilidades dos heróis, <kbd>1</kbd>–<kbd>8</kbd> escolhem o defensor, <kbd>Esc</kbd> pausa.</li>
       </ul>
       <button id="howBack">Entendi</button>
     </div>
@@ -90,9 +90,9 @@
 
   <div id="rotate" class="hidden">Gire o celular para jogar na horizontal ↻</div>
 
-  <script src="js/audio.js?v=1"></script>
-  <script src="js/data.js?v=1"></script>
-  <script src="js/art.js?v=1"></script>
-  <script src="js/game.js?v=1"></script>
+  <script src="js/audio.js?v=2"></script>
+  <script src="js/data.js?v=2"></script>
+  <script src="js/art.js?v=2"></script>
+  <script src="js/game.js?v=2"></script>
 </body>
 </html>
