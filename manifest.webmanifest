@@ -1,0 +1,10 @@
+{
+  "name": "Defensores da Nave-Mãe",
+  "short_name": "Nave-Mãe TD",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#05060f",
+  "theme_color": "#05060f",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
