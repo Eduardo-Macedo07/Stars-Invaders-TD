@@ -307,12 +307,28 @@ const Art = (() => {
   }
 
   // ---------- Defensores (vistos de cima, arma apontando para o alvo) ----------
-  // a = ângulo da arma; lvl = nível (1 a 3) muda detalhes; recoil = recuo do tiro (0 a 1)
-  function unit(g, type, x, y, a, lvl, t, recoil, sel) {
+  // a = ângulo da arma; tier = nível no caminho escolhido (0 a 5); pc = cor do caminho;
+  // recoil = recuo do tiro (0 a 1). No nível 5 o defensor fica maior, com aura e coroa.
+  function unit(g, type, x, y, a, tier, t, recoil, sel, pc) {
     const U = UNITS[type];
     const r = U.r;
+    const col = pc || U.color;
+    const sup = tier >= 5;
     g.save();
     g.translate(x, y);
+    if (sup) {
+      glow(g, 0, 0, r * 3.2, col, 0.45 + Math.sin(t * 3) * 0.12);
+      g.save();
+      g.rotate(t * 0.8);
+      g.strokeStyle = rgba(col, 0.7);
+      g.lineWidth = 2;
+      g.setLineDash([6, 7]);
+      g.beginPath();
+      g.arc(0, 0, r * 1.9, 0, TAU);
+      g.stroke();
+      g.restore();
+      g.scale(1.25, 1.25);
+    }
     // base de holograma no chão
     g.save();
     g.scale(1, 0.45);
@@ -320,17 +336,31 @@ const Art = (() => {
     g.arc(0, r * 1.5, r * 1.25, 0, TAU);
     g.fillStyle = 'rgba(0,0,0,0.4)';
     g.fill();
-    g.strokeStyle = rgba(U.color, sel ? 0.95 : 0.55);
+    g.strokeStyle = rgba(col, sel ? 0.95 : 0.55);
     g.lineWidth = sel ? 3 : 2;
     g.stroke();
     g.restore();
     const bob = Math.sin(t * 3 + x) * 1;
     g.translate(0, bob);
-    // estrelas de nível
-    for (let i = 0; i < lvl; i++) {
-      const sx = (i - (lvl - 1) / 2) * 9;
-      poly(g, starPts(sx, -r - 16, 4.5, 2), '#ffd36b', 1);
+    if (type === 'gosma') {
+      gosmaBody(g, r, a, t, recoil, tier, col);
+    } else {
+      soldierBody(g, type, U, r, a, t, recoil, tier, col);
     }
+    // marcadores de nível (bolinhas na cor do caminho) e coroa no nível 5
+    if (sup) {
+      poly(g, [-9, -r - 10, -9, -r - 20, -4.5, -r - 15, 0, -r - 23, 4.5, -r - 15, 9, -r - 20, 9, -r - 10], '#ffd36b', 1.5);
+      glow(g, 0, -r - 16, 14, '#ffd36b', 0.5);
+    } else {
+      for (let i = 0; i < tier; i++) {
+        const sx = (i - (tier - 1) / 2) * 8;
+        ball(g, sx, -r - 13, 3, col, 1.2, false);
+      }
+    }
+    g.restore();
+  }
+
+  function soldierBody(g, type, U, r, a, t, recoil, tier, col) {
     g.save();
     g.rotate(a);
     const kick = -recoil * 4;
@@ -349,11 +379,21 @@ const Art = (() => {
       rrect(g, 4 + kick, -5, 22, 10, 5, lin(g, 0, -5, 0, 5, '#e8fbff', '#5aa8e0'), 1.8);
       ball(g, 27 + kick, 0, 5, '#9af0ff', 1.4);
       glow(g, 27 + kick, 0, 10, '#9af0ff', 0.6);
+    } else if (type === 'piromante') {
+      // tanque nas costas e bico do lança-chamas
+      rrect(g, -r * 1.25, -7, 10, 14, 4, lin(g, 0, -7, 0, 7, '#ff9a4a', '#8a2a0a'), 1.8);
+      rrect(g, 4 + kick, -4, 24, 8, 3, lin(g, 0, -4, 0, 4, '#6a6a76', '#2a2a30'), 1.8);
+      glow(g, 30 + kick, 0, 9 + recoil * 8 + Math.sin(t * 30) * 2, '#ff8a2a', 0.8);
+    } else if (type === 'tesla') {
+      rrect(g, 4 + kick, -4, 18, 8, 3, '#3a3050', 1.8);
+      for (let i = 0; i < 3; i++) ball(g, 10 + i * 5 + kick, 0, 4, '#b48cff', 1, false);
+      ball(g, 27 + kick, 0, 5, '#e8d8ff', 1.4);
+      glow(g, 27 + kick, 0, 12 + Math.sin(t * 25) * 3, '#b48cff', 0.8);
     } else {
       rrect(g, 4 + kick, -4, 22, 8, 2.5, lin(g, 0, -4, 0, 4, '#8a96a6', '#2a3038'), 1.8);
     }
     // corpo (ombros) e mãos
-    const armor = type === 'viajante' ? '#e8ecf4' : lvl >= 3 ? light(U.color, 0.1) : dark(U.color, 0.15);
+    const armor = type === 'viajante' ? '#e8ecf4' : tier >= 3 ? light(U.color, 0.1) : dark(U.color, 0.15);
     ball(g, 8, -8, r * 0.32, armor, 1.5, false);
     ball(g, 8, 8, r * 0.32, armor, 1.5, false);
     g.restore();
@@ -366,10 +406,10 @@ const Art = (() => {
       g.restore();
     }
     ball(g, 0, 0, r * 0.8, armor, 2.2);
-    // detalhe colorido no peito
+    // detalhe colorido no peito (cor do caminho escolhido)
     g.save();
     g.rotate(a);
-    rrect(g, -r * 0.2, -r * 0.45, r * 0.4, r * 0.9, 3, U.color, 1.2);
+    rrect(g, -r * 0.2, -r * 0.45, r * 0.4, r * 0.9, 3, col, 1.2);
     g.restore();
     // capacete com visor apontando para o alvo
     ball(g, 0, -2, r * 0.58, type === 'viajante' ? '#f4f8ff' : mix(armor, '#ffffff', 0.3), 2);
@@ -393,6 +433,98 @@ const Art = (() => {
       g.stroke();
       ball(g, -r * 0.4, -r * 1.15, 3, '#ff4a4a', 1, false);
       glow(g, -r * 0.4, -r * 1.15, 8, '#ff4a4a', 0.5 + Math.sin(t * 6) * 0.3);
+    }
+  }
+
+  // Gosma Gigante: gelatina verde translúcida que balança, com coisas boiando dentro e olhos grandes.
+  function gosmaBody(g, r, a, t, recoil, tier, col) {
+    const sq = 1 + Math.sin(t * 4) * 0.06 + recoil * 0.12;
+    const R = r * 1.05;
+    g.save();
+    g.scale(1 / sq, sq);
+    // corpo ondulado
+    const pts = [];
+    for (let i = 0; i < 16; i++) {
+      const k = (i / 16) * TAU;
+      const w = 1 + Math.sin(k * 3 + t * 5) * 0.05;
+      pts.push(Math.cos(k) * R * w, Math.sin(k) * R * w * 0.92 + (Math.sin(k) > 0 ? R * 0.08 : 0));
+    }
+    glow(g, 0, 0, R * 2, '#7aff4a', 0.35);
+    g.beginPath();
+    g.moveTo(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]);
+    g.closePath();
+    const gr = g.createRadialGradient(-R * 0.35, -R * 0.4, R * 0.1, 0, 0, R * 1.1);
+    gr.addColorStop(0, 'rgba(210,255,170,0.95)');
+    gr.addColorStop(0.5, 'rgba(120,240,80,0.85)');
+    gr.addColorStop(1, 'rgba(40,140,30,0.9)');
+    g.fillStyle = gr;
+    g.fill();
+    outline(g, 2.4);
+    // objetos engolidos boiando lá dentro
+    g.globalAlpha = 0.55;
+    rrect(g, -R * 0.55 + Math.sin(t) * 2, R * 0.15, R * 0.35, R * 0.2, 2, '#c8a070', 1);
+    ball(g, R * 0.45, R * 0.35 + Math.sin(t * 1.3) * 2, R * 0.14, '#ff5a8a', 1, false);
+    g.globalAlpha = 1;
+    // bolhas
+    for (let i = 0; i < 4; i++) {
+      const by = R * 0.6 - ((t * 12 + i * 9) % (R * 1.2));
+      g.beginPath();
+      g.arc(-R * 0.2 + i * R * 0.15, by, 2 + (i % 2), 0, TAU);
+      g.strokeStyle = 'rgba(230,255,210,0.8)';
+      g.lineWidth = 1.2;
+      g.stroke();
+    }
+    // brilho
+    g.fillStyle = 'rgba(255,255,255,0.55)';
+    g.beginPath();
+    g.ellipse(-R * 0.4, -R * 0.5, R * 0.28, R * 0.13, -0.5, 0, TAU);
+    g.fill();
+    // olhos que seguem o alvo e boca sorridente
+    const ex = Math.cos(a) * 2.5;
+    const ey = Math.sin(a) * 2.5;
+    for (const s of [-1, 1]) {
+      ball(g, s * R * 0.3, -R * 0.15, R * 0.22, '#ffffff', 1.6, false);
+      ball(g, s * R * 0.3 + ex, -R * 0.15 + ey, R * 0.1, '#0a1a0a', 0, false);
+    }
+    g.beginPath();
+    g.arc(0, R * 0.12, R * 0.28, 0.2, Math.PI - 0.2);
+    g.strokeStyle = '#1a4a10';
+    g.lineWidth = 2.2;
+    g.stroke();
+    if (tier >= 3) {
+      // mais forte: gosma escorrendo com a cor do caminho
+      for (const s of [-1, 1]) ball(g, s * R * 0.75, R * 0.6 + Math.sin(t * 3 + s) * 2, R * 0.16, col, 1.2, false);
+    }
+    g.restore();
+  }
+
+  // Poça do Rio de Gosma sobre o caminho (pts = pontos amostrados do trecho).
+  function goo(g, pts, t, k) {
+    if (pts.length < 2) return;
+    const stroke = (w, c) => {
+      g.strokeStyle = c;
+      g.lineWidth = w;
+      g.lineCap = 'round';
+      g.lineJoin = 'round';
+      g.beginPath();
+      g.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+      g.stroke();
+    };
+    g.save();
+    g.globalAlpha = Math.min(1, k * 3);
+    stroke(58, 'rgba(20,80,10,0.55)');
+    stroke(50, 'rgba(110,230,70,0.75)');
+    stroke(26, 'rgba(190,255,150,0.6)');
+    for (let i = 0; i < pts.length; i += 2) {
+      const [x, y] = pts[i];
+      const s = (Math.sin(t * 3 + i * 1.7) + 1) * 0.5;
+      g.beginPath();
+      g.arc(x + Math.sin(i * 2.3) * 14, y + Math.cos(i * 1.9) * 14, 3 + s * 4, 0, TAU);
+      g.strokeStyle = 'rgba(230,255,210,0.85)';
+      g.lineWidth = 1.5;
+      g.stroke();
     }
     g.restore();
   }
@@ -485,7 +617,7 @@ const Art = (() => {
       c.width = c.height = 96;
       const g = c.getContext('2d');
       g.scale(2, 2);
-      unit(g, type, 24, 20, -0.5, 1, 0.4, 0, false);
+      unit(g, type, 24, 22, -0.5, 0, 0.4, 0, false);
       url = c.toDataURL();
       icons.set(type, url);
     }
@@ -503,5 +635,5 @@ const Art = (() => {
     return c.toDataURL();
   }
 
-  return { TAU, OUT, mix, light, dark, rgba, outline, ball, poly, rrect, lin, glow, buildBackground, drawPathFlow, portal, mothership, unit, enemy, unitIcon, mapPreview, starPts };
+  return { TAU, OUT, mix, light, dark, rgba, outline, ball, poly, rrect, lin, glow, buildBackground, drawPathFlow, portal, mothership, unit, goo, enemy, unitIcon, mapPreview, starPts };
 })();
