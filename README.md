@@ -1,4 +1,4 @@
-# Defensores da Nave-Mãe
+# Stars Invaders
 
 Tower defense futurista feito em JavaScript puro e Canvas 2D, sem instalar nada.
 Os invasores alienígenas saem de um portal e seguem uma rota fixa até a nave-mãe.
