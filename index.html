@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#05060f">
+  <meta name="theme-color" content="#000000">
   <title>Defensores da Nave-Mãe</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Exo+2:wght@500;700;800&display=swap">
-  <link rel="stylesheet" href="style.css?v=2">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;800&family=Share+Tech+Mono&display=swap">
+  <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -17,9 +17,9 @@
   <!-- HUD da partida -->
   <div id="hud" class="hidden">
     <div id="topbar">
-      <div class="stat money" title="Créditos"><span class="ico">◆</span><b id="money">0</b></div>
-      <div class="stat lives" title="Casco da nave-mãe"><span class="ico">✚</span><b id="lives">100</b></div>
-      <div class="stat wave" title="Onda"><span class="ico">≋</span><b id="wave">0/20</b></div>
+      <div class="stat money" title="Créditos"><small>Créditos</small><b id="money">0</b></div>
+      <div class="stat lives" title="Casco da nave-mãe"><small>Casco</small><b id="lives">100</b></div>
+      <div class="stat wave" title="Onda"><small>Onda</small><b id="wave">0/20</b></div>
       <div class="spacer"></div>
       <div id="abilities"></div>
       <button id="speedBtn" class="small" title="Velocidade (F)">x1</button>
@@ -33,11 +33,18 @@
 
   <!-- Menu inicial -->
   <div id="home" class="overlay">
-    <div class="panel title">
+    <div class="title">
+      <p class="pre">Há muito tempo, numa galáxia muito, muito distante...</p>
       <h1><span>Defensores da</span><span>Nave-Mãe</span></h1>
-      <p class="tagline">Os invasores seguem as rotas até a nave-mãe. Posicione seus defensores e não deixe nenhum passar.</p>
-      <button id="playBtn" class="big">Jogar</button>
-      <button id="howBtn" class="secondary">Como jogar</button>
+      <div class="crawl"><div class="crawl-text">
+        <p>Invasores alienígenas atravessam portais e seguem rotas traçadas até a nave-mãe.</p>
+        <p>Recrute heróis e soldados estelares, evolua seus poderes e não deixe nenhum passar.</p>
+      </div></div>
+      <div class="menu">
+        <button id="playBtn" class="primary">Jogar</button>
+        <button id="howBtn">Como jogar</button>
+        <button id="styleBtn" class="ghost">Arte: Pixel</button>
+      </div>
       <p id="homeBest" class="muted"></p>
     </div>
   </div>
@@ -46,7 +53,7 @@
   <div id="maps" class="overlay hidden">
     <div class="panel wide">
       <h2>Escolha o setor</h2>
-      <p class="muted">Vença as 20 ondas de um setor para liberar o próximo.</p>
+      <p class="muted">Cada setor tem três rotas, uma por dificuldade. Vença um setor em qualquer dificuldade para liberar o próximo.</p>
       <div id="maplist"></div>
       <button id="mapsBack" class="secondary">Voltar</button>
     </div>
@@ -57,14 +64,14 @@
     <div class="panel">
       <h2>Como jogar</h2>
       <ul class="howlist">
-        <li>Os invasores saem do portal e seguem o caminho até a <b>nave-mãe</b>. Cada um que chega danifica o casco.</li>
+        <li>Os invasores saem dos portais e seguem o caminho até a <b>nave-mãe</b>. Cada um que chega danifica o casco. Nas rotas difíceis há mais de uma entrada.</li>
         <li>Escolha um defensor no painel e toque/clique num lugar livre fora do caminho para posicioná-lo.</li>
         <li>Há dois heróis, cada um com uma habilidade especial: o <b>Viajante Espacial</b> (<b>Chuva de Plasma</b>) e a <b>Gosma Gigante</b> (<b>Rio de Gosma</b>, que paralisa um trecho do caminho). Cada herói só pode ser posicionado uma vez.</li>
-        <li>Cada invasor derrotado solta <b>créditos</b>. Ao fim de cada onda você ganha um bônus.</li>
+        <li>Cada invasor derrotado solta <b>créditos</b>. Ao fim de cada onda você ganha um bônus. A recarga das habilidades dos heróis só anda durante as ondas.</li>
         <li>Toque num defensor para abrir a <b>árvore de evolução</b>. Cada um tem vários caminhos de 5 níveis, mas só dá para seguir <b>um</b>: ao comprar o 1º nível de um caminho, os outros são bloqueados. O nível 5 dos soldados libera uma <b>SUPER habilidade</b>.</li>
         <li>Atalhos: <kbd>Espaço</kbd> inicia a onda, <kbd>F</kbd> acelera, <kbd>Q</kbd> e <kbd>E</kbd> usam as habilidades dos heróis, <kbd>1</kbd>–<kbd>8</kbd> escolhem o defensor, <kbd>Esc</kbd> pausa.</li>
       </ul>
-      <button id="howBack">Entendi</button>
+      <button id="howBack" class="primary">Entendi</button>
     </div>
   </div>
 
@@ -72,9 +79,10 @@
   <div id="pause" class="overlay hidden">
     <div class="panel">
       <h2>Pausado</h2>
-      <button id="resumeBtn">Continuar</button>
+      <button id="resumeBtn" class="primary">Continuar</button>
       <button id="restartBtn" class="secondary">Recomeçar setor</button>
       <button id="quitBtn" class="secondary">Sair para os setores</button>
+      <button id="styleBtn2" class="ghost">Arte: Pixel</button>
     </div>
   </div>
 
@@ -83,16 +91,18 @@
     <div class="panel">
       <h2 id="resultTitle">Vitória!</h2>
       <div id="resultStats"></div>
-      <button id="againBtn">Jogar de novo</button>
+      <button id="againBtn" class="primary">Jogar de novo</button>
       <button id="resultMaps" class="secondary">Escolher setor</button>
     </div>
   </div>
 
   <div id="rotate" class="hidden">Gire o celular para jogar na horizontal ↻</div>
 
-  <script src="js/audio.js?v=2"></script>
-  <script src="js/data.js?v=2"></script>
-  <script src="js/art.js?v=2"></script>
-  <script src="js/game.js?v=2"></script>
+  <script src="js/audio.js?v=3"></script>
+  <script src="js/data.js?v=3"></script>
+  <script src="assets/sprites/lista.js?v=3"></script>
+  <script src="js/sprites.js?v=3"></script>
+  <script src="js/art.js?v=3"></script>
+  <script src="js/game.js?v=3"></script>
 </body>
 </html>

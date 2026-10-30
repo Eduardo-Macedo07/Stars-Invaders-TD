@@ -8,14 +8,27 @@
   const canvas = $('game');
   const ctx = canvas.getContext('2d');
   const TAU = Math.PI * 2;
-  const SAVE_KEY = 'ndm_save_v1';
+  const SAVE_KEY = 'ndm_save_v2';
+  const OLD_SAVE_KEY = 'ndm_save_v1';
   const MIN_ABILITY_CD = 6;
 
   // ---------- Progresso salvo ----------
+  // best[idDoSetor][dificuldade] = { won, wave, lives }
   let save = { unlocked: 1, best: {} };
   try {
     const raw = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if (raw && typeof raw.unlocked === 'number') save = { unlocked: raw.unlocked, best: raw.best || {} };
+    if (raw && typeof raw.unlocked === 'number') {
+      save = { unlocked: raw.unlocked, best: raw.best || {}, pixel: raw.pixel };
+    } else {
+      // migra o progresso antigo (um resultado por setor) para a dificuldade Normal
+      const old = JSON.parse(localStorage.getItem(OLD_SAVE_KEY));
+      if (old && typeof old.unlocked === 'number') {
+        for (const [id, b] of Object.entries(old.best || {})) save.best[id] = { normal: b };
+        // setores novos entraram no meio da lista: libera pelo número de setores vencidos
+        const wonIds = Object.keys(old.best || {}).filter((id) => old.best[id].won);
+        save.unlocked = Math.max(1, ...wonIds.map((id) => MAPS.findIndex((m) => m.id === id) + 2));
+      }
+    }
   } catch (e) { /* sem armazenamento: segue sem salvar */ }
   function persist() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* ignorado */ }
@@ -78,20 +91,32 @@
   let demo = null; // fundo animado dos menus
   let time = 0;
 
-  function newGame(mapIndex) {
+  // Monta o cenário de um setor numa dificuldade: caminhos, portais, nave-mãe e fundo.
+  function makeLevel(mapIndex, dif) {
     const map = MAPS[mapIndex];
-    const end = map.path[map.path.length - 1];
-    G = {
-      mapIndex, map, path: buildPath(map.path), bg: Art.buildBackground(map, mapIndex),
-      portal: map.path[0][0] < 0 || map.path[0][1] < 0
-        ? [Math.max(30, map.path[0][0] + 70 * (map.path[0][0] < 0 ? 1 : 0)), Math.max(30, map.path[0][1] + 70 * (map.path[0][1] < 0 ? 1 : 0))]
-        : map.path[0],
-      ship: [end[0] + 40, end[1] - 10],
+    const rota = map.rotas[dif];
+    const paths = rota.map(buildPath);
+    // portal: o início do caminho, ou um pouco para dentro se ele começa fora da tela
+    const portals = rota.map((pts, i) => {
+      const [x, y] = pts[0];
+      if (x >= 0 && y >= 0 && x <= WORLD_W && y <= WORLD_H) return [x, y];
+      const p = posAt(paths[i], 70);
+      return [p.x, p.y];
+    });
+    const end = rota[0][rota[0].length - 1];
+    return { map, paths, portals, ship: [Math.min(WORLD_W - 90, end[0] + 40), end[1] - 10], bg: Art.buildBackground(map, mapIndex, rota) };
+  }
+
+  function newGame(mapIndex, dif) {
+    dif = dif || 'normal';
+    const D = DIFICULDADES[dif];
+    G = Object.assign(makeLevel(mapIndex, dif), {
+      mapIndex, dif,
       units: [], enemies: [], shots: [], fx: [], floats: [], strikes: [], puddles: [],
-      money: START_MONEY, lives: START_LIVES, wave: 0, waveActive: false, queue: [], waveT: 0,
+      money: D.money, lives: D.lives, maxLives: D.lives, wave: 0, waveActive: false, queue: [], waveT: 0, spawnN: 0,
       speed: 1, paused: false, over: false, place: null, sel: null, hover: null,
       kills: 0, earned: 0, shipHit: 0, heroes: {},
-    };
+    });
     state = 'play';
     showOnly(null);
     $('hud').classList.remove('hidden');
@@ -113,9 +138,10 @@
       b.dataset.type = type;
       b.style.setProperty('--c', U.color);
       b.title = `${U.name} (${i + 1}): ${U.desc}`;
-      b.innerHTML = `<img src="${Art.unitIcon(type)}" alt=""><span class="nm">${U.name.split(' ')[0]}</span><span class="cost">◆ ${U.cost}</span>`;
+      b.innerHTML = `<canvas data-icon="${type}"></canvas><span class="nm">${U.name.split(' ')[0]}</span><span class="cost">◆ ${U.cost}</span>`;
       b.addEventListener('click', () => pickShop(type));
       shop.appendChild(b);
+      Art.fillIcons(b);
     });
   }
   function pickShop(type) {
@@ -144,10 +170,10 @@
   function canPlace(type, x, y) {
     const r = UNITS[type].r;
     if (x < r + 6 || y < r + 14 || x > WORLD_W - r - 6 || y > WORLD_H - r - 6) return false;
-    for (const s of G.path.segs) if (distToSeg(x, y, s) < 30 + r) return false;
+    for (const path of G.paths) for (const s of path.segs) if (distToSeg(x, y, s) < 30 + r) return false;
     for (const u of G.units) if (Math.hypot(u.x - x, u.y - y) < r + UNITS[u.type].r + 6) return false;
     if (Math.hypot(G.ship[0] - x, G.ship[1] - y) < 100 + r) return false;
-    if (Math.hypot(G.portal[0] - x, G.portal[1] - y) < 45 + r) return false;
+    for (const pt of G.portals) if (Math.hypot(pt[0] - x, pt[1] - y) < 45 + r) return false;
     return true;
   }
 
@@ -251,6 +277,7 @@
   }
   function sellValue(u) { return Math.floor(u.spent * 0.7); }
   function pathColor(u) { return u.path !== null ? UNITS[u.type].paths[u.path].color : null; }
+  function pathLook(u) { return u.path !== null ? UNITS[u.type].paths[u.path].look : null; }
   function renderUnitPanel() {
     const u = G.sel;
     const p = $('unitpanel');
@@ -258,13 +285,13 @@
     const U = UNITS[u.type];
     const title = u.path !== null && u.tier > 0 ? U.paths[u.path].tiers[u.tier - 1].name : U.name;
     const rate = (u.bRate / u.cd).toFixed(1);
-    let html = `<div class="uphead" style="--c:${pathColor(u) || U.color}"><img src="${Art.unitIcon(u.type)}" alt="">
+    let html = `<div class="uphead" style="--c:${pathColor(u) || U.color}"><canvas data-icon="${u.type}"></canvas>
       <div><b>${title}</b><small>${U.name}${u.tier ? ` · Nível ${u.tier}` : ''}</small></div>
       <button class="x" id="upClose" title="Fechar">✕</button></div>
       <div class="upstats"><span>Dano <b>${Math.round(u.dmg * u.bDmg)}</b></span><span>Alcance <b>${Math.round(u.range)}</b></span><span>Tiros/s <b>${rate}</b></span><span>Abates <b>${u.kills}</b></span></div>`;
     if (U.ability) {
       const ready = u.abilityCd <= 0;
-      html += `<button id="upAbility" class="ability ${ready ? '' : 'wait'}">${u.type === 'gosma' ? '◉' : '☄'} ${U.ability.name} ${ready ? `(${U.key})` : Math.ceil(u.abilityCd) + 's'}</button>`;
+      html += `<button id="upAbility" class="ability ${ready ? '' : 'wait'}">${u.type === 'gosma' ? '◉' : '☄'} ${U.ability.name} ${ready ? `(${U.key})` : (G.waveActive ? '' : '⏸ ') + Math.ceil(u.abilityCd) + 's'}</button>`;
     }
     html += '<div class="paths">';
     U.paths.forEach((path, i) => {
@@ -291,6 +318,7 @@
     html += '</div>';
     html += `<button id="upSell" class="secondary">Vender por ◆ ${sellValue(u)}</button>`;
     p.innerHTML = html;
+    Art.fillIcons(p);
     p.classList.remove('hidden');
     $('upClose').onclick = () => { G.sel = null; hideUnitPanel(); };
     for (const b of p.querySelectorAll('button.buy[data-path]')) b.onclick = () => buyTier(u, +b.dataset.path);
@@ -300,7 +328,7 @@
   }
   function panelSig(u) {
     const afford = UNITS[u.type].paths.map((_, i) => { const n = nextTier(u, i); return n && G.money >= n.cost ? 1 : 0; }).join('');
-    return [u.tier, u.path, u.kills, Math.ceil(u.abilityCd), afford, u.bDmg, u.bRate].join('|');
+    return [u.tier, u.path, u.kills, Math.ceil(u.abilityCd), G.waveActive, afford, u.bDmg, u.bRate].join('|');
   }
   function sell(u) {
     const v = sellValue(u);
@@ -350,24 +378,28 @@
     const A = h.ab;
     const reach = h.range + 40;
     let center = -1;
+    let pi = 0;
     for (const e of G.enemies) {
-      if (Math.hypot(e.x - h.x, e.y - h.y) <= reach && e.dist > center) center = e.dist;
+      if (Math.hypot(e.x - h.x, e.y - h.y) <= reach && e.dist > center) { center = e.dist; pi = e.pi; }
     }
     if (center < 0) {
-      // sem invasores por perto: usa o ponto mais avançado do caminho dentro do alcance
-      for (let d = 0; d <= G.path.total; d += 10) {
-        const p = posAt(G.path, d);
-        if (Math.hypot(p.x - h.x, p.y - h.y) <= reach) center = d;
-      }
+      // sem invasores por perto: usa o ponto mais avançado de um caminho dentro do alcance
+      G.paths.forEach((path, i) => {
+        for (let d = 0; d <= path.total; d += 10) {
+          const p = posAt(path, d);
+          if (Math.hypot(p.x - h.x, p.y - h.y) <= reach && d > center) { center = d; pi = i; }
+        }
+      });
     }
+    const path = G.paths[pi];
     if (center < 0) { toast('Não há caminho no alcance da Gosma.'); Sound.play('deny'); return false; }
     const d0 = Math.max(0, center - A.len * 0.7);
-    const d1 = Math.min(G.path.total, center + A.len * 0.3);
+    const d1 = Math.min(path.total, center + A.len * 0.3);
     const pts = [];
-    for (let d = d0; d <= d1; d += 12) { const p = posAt(G.path, d); pts.push([p.x, p.y]); }
-    const pe = posAt(G.path, d1);
+    for (let d = d0; d <= d1; d += 12) { const p = posAt(path, d); pts.push([p.x, p.y]); }
+    const pe = posAt(path, d1);
     pts.push([pe.x, pe.y]);
-    G.puddles.push({ d0, d1, pts, t: A.dur, max: A.dur, stun: A.stun, dps: A.dps * (1 + G.wave * 0.35) * h.bDmg, hit: new Set(), src: h });
+    G.puddles.push({ pi, d0, d1, pts, t: A.dur, max: A.dur, stun: A.stun, dps: A.dps * (1 + G.wave * 0.35) * h.bDmg, hit: new Set(), src: h });
     // gosma voando da heroína até o caminho
     for (let i = 0; i < pts.length; i += 3) {
       const [x, y] = pts[i];
@@ -383,7 +415,7 @@
     G.wave++;
     G.waveActive = true;
     G.waveT = 0;
-    const w = buildWave(G.wave, G.mapIndex);
+    const w = buildWave(G.wave, G.mapIndex, G.dif);
     G.queue = [];
     for (const [type, count, interval, delay] of w.groups) {
       for (let i = 0; i < count; i++) G.queue.push({ type, t: delay + i * interval, hpMul: ENEMIES[type].boss ? w.bossMul : w.hpMul });
@@ -412,13 +444,15 @@
     refreshHud();
   }
 
-  function spawn(type, hpMul, dist) {
+  function spawn(type, hpMul, dist, pi) {
     const E = ENEMIES[type];
     const hp = Math.round(E.hp * hpMul);
-    const p = posAt(G.path, dist || 0);
+    // com várias entradas, os invasores se revezam entre os caminhos
+    if (pi === undefined) pi = G.spawnN++ % G.paths.length;
+    const p = posAt(G.paths[pi], dist || 0);
     G.enemies.push({
-      type, hp, maxHp: hp, dist: dist || 0, x: p.x, y: p.y, angle: p.a, slowT: 0, slow: 0, stunT: 0, flash: 0,
-      reward: E.reward, wob: Math.random() * TAU, burn: 0, burnT: 0, burnSrc: null, shred: 0, vuln: 0, vulnT: 0, explode: 0,
+      type, pi, hp, maxHp: hp, dist: dist || 0, x: p.x, y: p.y, angle: p.a, slowT: 0, slow: 0, stunT: 0, flash: 0,
+      reward: Math.max(1, Math.round(E.reward * DIFICULDADES[G.dif].reward)), wob: Math.random() * TAU, burn: 0, burnT: 0, burnSrc: null, shred: 0, vuln: 0, vulnT: 0, explode: 0,
     });
   }
 
@@ -454,7 +488,7 @@
       ring(e.x, e.y, '#ffd36b', 140, 0.7);
       Sound.play('boom');
       // o cruzador solta mini-drones ao explodir
-      for (let i = 0; i < 6; i++) spawn('enxame', 1 + G.wave * 0.15, Math.max(0, e.dist - i * 14));
+      for (let i = 0; i < 6; i++) spawn('enxame', 1 + G.wave * 0.15, Math.max(0, e.dist - i * 14), e.pi);
     } else {
       Sound.play('pop');
     }
@@ -676,7 +710,8 @@
       if (!h) continue;
       const ready = h.abilityCd <= 0;
       b.classList.toggle('wait', !ready);
-      b.querySelector('span').textContent = ready ? 'Pronta' : Math.ceil(h.abilityCd) + 's';
+      b.querySelector('span').textContent = ready ? 'Pronta' : (G.waveActive ? '' : '⏸ ') + Math.ceil(h.abilityCd) + 's';
+      b.title = ready ? '' : G.waveActive ? '' : 'Recarga pausada até a próxima onda';
     }
   }
 
@@ -696,7 +731,7 @@
     for (const pd of G.puddles) {
       pd.t -= dt;
       for (const e of G.enemies) {
-        if (e.hp <= 0 || e.dist < pd.d0 || e.dist > pd.d1) continue;
+        if (e.hp <= 0 || e.pi !== pd.pi || e.dist < pd.d0 || e.dist > pd.d1) continue;
         if (!pd.hit.has(e)) {
           pd.hit.add(e);
           e.stunT = Math.max(e.stunT, isBoss(e) ? pd.stun * 0.4 : pd.stun);
@@ -728,14 +763,15 @@
       let sp = E.speed;
       if (e.slowT > 0) { e.slowT -= dt; sp *= 1 - e.slow; if (e.slowT <= 0) e.slow = 0; }
       e.dist += sp * dt;
-      const p = posAt(G.path, e.dist);
+      const path = G.paths[e.pi];
+      const p = posAt(path, e.dist);
       e.x = p.x;
       e.y = p.y + (e.type === 'enxame' ? Math.sin(time * 6 + e.wob) * 4 : 0);
       let da = p.a - e.angle;
       while (da > Math.PI) da -= TAU;
       while (da < -Math.PI) da += TAU;
       e.angle += da * Math.min(1, dt * 10);
-      if (e.dist >= G.path.total) {
+      if (e.dist >= path.total) {
         e.hp = 0;
         G.lives -= E.dmg;
         G.shipHit = 1;
@@ -761,7 +797,8 @@
     for (const u of G.units) {
       u.timer -= dt * u.bRate;
       u.recoil = Math.max(0, u.recoil - dt * 6);
-      if (u.abilityCd > 0) u.abilityCd = Math.max(0, u.abilityCd - dt);
+      // a recarga da habilidade só anda com uma onda em curso (e acompanha a velocidade, pois update roda G.speed vezes)
+      if (u.abilityCd > 0 && G.waveActive) u.abilityCd = Math.max(0, u.abilityCd - dt);
       const list = targetsFor(u);
       if (u.slowAura) {
         for (const e of list) { e.slowT = Math.max(e.slowT, 0.15); e.slow = Math.max(e.slow, u.slowAura); }
@@ -851,21 +888,22 @@
     Sound.setIntense(false);
     Sound.play(won ? 'win' : 'lose');
     const id = G.map.id;
-    const prev = save.best[id] || { won: false, wave: 0, lives: 0 };
-    save.best[id] = {
+    save.best[id] = save.best[id] || {};
+    const prev = save.best[id][G.dif] || { won: false, wave: 0, lives: 0 };
+    save.best[id][G.dif] = {
       won: prev.won || won,
       wave: Math.max(prev.wave, won ? TOTAL_WAVES : G.wave - 1),
       lives: won ? Math.max(prev.lives || 0, Math.ceil(G.lives)) : prev.lives || 0,
     };
     if (won) save.unlocked = Math.max(save.unlocked, Math.min(MAPS.length, G.mapIndex + 2));
     persist();
-    $('resultTitle').textContent = won ? 'Nave-mãe protegida!' : 'A nave-mãe caiu...';
+    $('resultTitle').textContent = won ? 'Nave-mãe protegida' : 'A nave-mãe caiu';
     $('resultTitle').className = won ? 'win' : 'lose';
     const next = won && G.mapIndex + 1 < MAPS.length ? `<p class="unlock">Novo setor liberado: <b>${MAPS[G.mapIndex + 1].name}</b></p>` : '';
     $('resultStats').innerHTML = `
       <div class="stats"><span>Ondas<b>${won ? TOTAL_WAVES : G.wave - 1}/${TOTAL_WAVES}</b></span>
       <span>Invasores<b>${G.kills}</b></span><span>Créditos ganhos<b>◆ ${G.earned}</b></span>
-      <span>Casco<b>${Math.max(0, Math.ceil(G.lives))}</b></span></div>${next}`;
+      <span>${DIFICULDADES[G.dif].name}<b>${Math.max(0, Math.ceil(G.lives))}</b></span></div>${next}`;
     setTimeout(() => showOnly('result'), 900);
   }
 
@@ -883,9 +921,9 @@
     g.rect(0, 0, WORLD_W, WORLD_H);
     g.clip();
     g.drawImage(W.bg, 0, 0);
-    Art.drawPathFlow(g, W.map.path, time);
-    Art.portal(g, W.portal[0], W.portal[1], time);
-    Art.mothership(g, W.ship[0], W.ship[1], time, W.lives / START_LIVES, W.shipHit || 0);
+    for (const path of W.paths) Art.drawPathFlow(g, path, time, W.map);
+    for (const pt of W.portals) Art.portal(g, pt[0], pt[1], time);
+    Art.mothership(g, W.ship[0], W.ship[1], time, W.lives / (W.maxLives || START_LIVES), W.shipHit || 0);
 
     if (state === 'play') {
       for (const pd of G.puddles) Art.goo(g, pd.pts, time, pd.t / pd.max);
@@ -904,7 +942,7 @@
     list.sort((a, b) => a.y - b.y);
     for (const it of list) {
       if (it.e) Art.enemy(g, it.e, time);
-      else Art.unit(g, it.u.type, it.u.x, it.u.y, it.u.angle, it.u.tier, time, it.u.recoil, G.sel === it.u, pathColor(it.u));
+      else Art.unit(g, it.u.type, it.u.x, it.u.y, it.u.angle, it.u.tier, time, it.u.recoil, G.sel === it.u, pathColor(it.u), pathLook(it.u), it.u.path !== null ? UNITS[it.u.type].paths[it.u.path].name : null);
     }
     if (state === 'play') {
       for (const e of G.enemies) {
@@ -921,7 +959,7 @@
         Art.unit(g, G.place, G.hover.x, G.hover.y, -Math.PI / 2, 0, time, 0, false);
         g.globalAlpha = 1;
       }
-      g.font = '800 18px "Exo 2", sans-serif';
+      g.font = '800 20px "Barlow Condensed", sans-serif';
       g.textAlign = 'center';
       g.lineWidth = 4;
       g.strokeStyle = '#0a0e1e';
@@ -971,16 +1009,23 @@
     if (!bosses.length) return;
     const hp = bosses.reduce((a, e) => a + Math.max(0, e.hp), 0);
     const max = bosses.reduce((a, e) => a + e.maxHp, 0);
-    const w = 420;
+    // barra fina, no estilo do resto da interface
+    const w = 460;
     const x = WORLD_W / 2 - w / 2;
-    const y = 16;
-    Art.rrect(g, x - 4, y - 4, w + 8, 26, 8, 'rgba(10,14,30,0.85)', 2);
-    g.fillStyle = '#ff4a4a';
-    g.fillRect(x, y, w * (hp / max), 18);
-    g.font = '800 14px "Orbitron", sans-serif';
+    const y = 30;
+    g.fillStyle = 'rgba(0,0,0,0.75)';
+    g.fillRect(x - 6, y - 22, w + 12, 36);
+    g.fillStyle = 'rgba(255,59,48,0.25)';
+    g.fillRect(x, y, w, 6);
+    g.fillStyle = '#ff3b30';
+    g.fillRect(x, y, w * (hp / max), 6);
+    g.strokeStyle = '#ffe81f';
+    g.lineWidth = 1;
+    g.strokeRect(x - 6, y - 22, w + 12, 36);
+    g.font = '800 15px "Barlow Condensed", sans-serif';
     g.textAlign = 'center';
-    g.fillStyle = '#fff';
-    g.fillText(`CRUZADOR ALIENÍGENA${bosses.length > 1 ? ' x' + bosses.length : ''}`, WORLD_W / 2, y + 14);
+    g.fillStyle = '#ffe81f';
+    g.fillText(`C R U Z A D O R   A L I E N Í G E N A${bosses.length > 1 ? '  x' + bosses.length : ''}`, WORLD_W / 2, y - 6);
   }
   function drawShots(g) {
     for (const s of G.shots) {
@@ -1072,9 +1117,7 @@
 
   // ---------- Fundo animado dos menus ----------
   function makeDemo() {
-    const map = MAPS[0];
-    const end = map.path[map.path.length - 1];
-    demo = { map, path: buildPath(map.path), bg: Art.buildBackground(map, 0), portal: [30, 130], ship: [end[0] + 40, end[1] - 10], enemies: [], lives: START_LIVES, shipHit: 0, t: 0 };
+    demo = Object.assign(makeLevel(0, 'normal'), { enemies: [], lives: START_LIVES, shipHit: 0, t: 0 });
   }
   function updateDemo(dt) {
     time += dt;
@@ -1087,9 +1130,9 @@
     }
     for (const e of demo.enemies) {
       e.dist += ENEMIES[e.type].speed * dt;
-      const p = posAt(demo.path, e.dist);
+      const p = posAt(demo.paths[0], e.dist);
       e.x = p.x; e.y = p.y; e.angle = p.a;
-      if (e.dist >= demo.path.total) e.hp = 0;
+      if (e.dist >= demo.paths[0].total) e.hp = 0;
     }
     demo.enemies = demo.enemies.filter((e) => e.hp > 0);
   }
@@ -1197,9 +1240,13 @@
   }
   function goHome() {
     if (G) leaveGame();
-    const won = MAPS.filter((m) => save.best[m.id] && save.best[m.id].won).length;
+    const won = MAPS.filter((m) => mapWon(m.id)).length;
     $('homeBest').textContent = won ? `Setores protegidos: ${won}/${MAPS.length}` : '';
     showOnly('home');
+  }
+  function mapWon(id) {
+    const b = save.best[id] || {};
+    return DIF_ORDER.some((d) => b[d] && b[d].won);
   }
   function openMaps() {
     if (G) leaveGame();
@@ -1207,22 +1254,61 @@
     list.innerHTML = '';
     MAPS.forEach((m, i) => {
       const locked = i >= save.unlocked;
-      const best = save.best[m.id];
-      const b = document.createElement('button');
-      b.className = 'mapcard' + (locked ? ' locked' : '');
-      b.style.setProperty('--c', m.accent);
-      b.innerHTML = `<div class="thumb" style="background-image:url(${Art.mapPreview(m, i)})">${locked ? '<span class="lock">🔒</span>' : ''}</div>
-        <div class="info"><b>${m.name}</b><small>${locked ? 'Vença o setor anterior para liberar.' : m.desc}</small>
-        <span class="best">${best ? (best.won ? `✔ Protegido · casco ${best.lives}` : `Melhor: onda ${best.wave}/${TOTAL_WAVES}`) : 'Ainda não jogado'}</span></div>`;
-      b.addEventListener('click', () => {
-        Sound.unlock();
-        if (locked) { Sound.play('deny'); return; }
-        newGame(i);
-      });
-      list.appendChild(b);
+      const best = save.best[m.id] || {};
+      const card = document.createElement('div');
+      card.className = 'mapcard' + (locked ? ' locked' : '');
+      card.style.setProperty('--c', m.accent);
+      const difs = DIF_ORDER.map((d) => {
+        const r = best[d];
+        const mark = r ? (r.won ? '★' : `${r.wave}`) : '';
+        return `<button class="dif" data-dif="${d}" style="--d:${DIFICULDADES[d].color}" ${locked ? 'disabled' : ''}>${DIFICULDADES[d].name}<i>${mark}</i></button>`;
+      }).join('');
+      card.innerHTML = `<div class="thumb">${locked ? '<span class="lock">Bloqueado</span>' : ''}</div>
+        <div class="info"><b>${String(i + 1).padStart(2, '0')} · ${m.name}</b><small>${locked ? 'Vença o setor anterior em qualquer dificuldade.' : m.desc}</small>
+        <div class="difs">${difs}</div></div>`;
+      const thumb = card.querySelector('.thumb');
+      const tc = document.createElement('canvas');
+      thumb.prepend(tc);
+      const show = (d) => {
+        const src = Art.mapPreview(m, i, d);
+        tc.width = src.width;
+        tc.height = src.height;
+        tc.getContext('2d').drawImage(src, 0, 0);
+      };
+      show('normal');
+      for (const b of card.querySelectorAll('.dif')) {
+        b.addEventListener('pointerenter', () => show(b.dataset.dif));
+        b.addEventListener('focus', () => show(b.dataset.dif));
+        b.addEventListener('click', () => {
+          Sound.unlock();
+          if (locked) { Sound.play('deny'); return; }
+          newGame(i, b.dataset.dif);
+        });
+      }
+      list.appendChild(card);
     });
     showOnly('maps');
   }
+
+  // Alterna entre pixel art e arte vetorial (lembrado no save).
+  function applyArtStyle() {
+    const px = save.pixel !== false;
+    Art.setPixel(px);
+    for (const id of ['styleBtn', 'styleBtn2']) $(id).textContent = `Arte: ${px ? 'Pixel' : 'Vetorial'}`;
+    if (demo) demo.bg = Art.buildBackground(demo.map, 0, demo.map.rotas.normal);
+    if (G) {
+      G.bg = Art.buildBackground(G.map, G.mapIndex, G.map.rotas[G.dif]);
+      buildShop();
+      if (G.sel) renderUnitPanel();
+    }
+  }
+  function toggleArtStyle() {
+    save.pixel = save.pixel === false;
+    persist();
+    applyArtStyle();
+  }
+  $('styleBtn').onclick = toggleArtStyle;
+  $('styleBtn2').onclick = toggleArtStyle;
 
   $('playBtn').onclick = () => { Sound.unlock(); openMaps(); };
   $('howBtn').onclick = () => showOnly('how');
@@ -1232,9 +1318,9 @@
   $('speedBtn').onclick = toggleSpeed;
   $('pauseBtn').onclick = togglePause;
   $('resumeBtn').onclick = togglePause;
-  $('restartBtn').onclick = () => newGame(G.mapIndex);
+  $('restartBtn').onclick = () => newGame(G.mapIndex, G.dif);
   $('quitBtn').onclick = openMaps;
-  $('againBtn').onclick = () => newGame(G.mapIndex);
+  $('againBtn').onclick = () => newGame(G.mapIndex, G.dif);
   $('resultMaps').onclick = openMaps;
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && G && !G.over && !G.paused && state === 'play') togglePause();
@@ -1243,7 +1329,11 @@
   // ganchos para testes automatizados
   window.__ndm = { get G() { return G; }, step: (dt) => update(dt), newGame, startWave, placeUnit, useAbility, buyTier, nextTier, sell, selectUnit, canPlace };
 
+  Art.setPixel(save.pixel !== false);
   makeDemo();
+  applyArtStyle();
+  // redesenha o fundo quando as fontes da página terminarem de carregar (letreiros usam a fonte do tema)
+  if (document.fonts) document.fonts.ready.then(() => { if (demo) demo.bg = Art.buildBackground(demo.map, 0, demo.map.rotas.normal); });
   resize();
   goHome();
   requestAnimationFrame(frame);
