@@ -55,13 +55,13 @@ Seis setores, liberados em sequência (vencer um setor em qualquer dificuldade l
 5. Deserto de Marte
 6. Nebulosa Carmesim
 
-Cada setor tem **três rotas**, uma por dificuldade:
+Cada setor tem **três rotas** curvas, uma por dificuldade. Algumas se bifurcam ou têm várias entradas que se cruzam:
 
 | Dificuldade | Rota | Créditos | Casco |
 | --- | --- | --- | --- |
 | Fácil | longa e sinuosa; invasores com menos vida | 750 | 150 |
 | Normal | média | 650 | 100 |
-| Difícil | curta e com **duas entradas** | 800 | 80 |
+| Difícil | curta e com **duas ou três entradas** | 800 | 80 |
 
 A recarga das habilidades dos heróis só anda durante as ondas e acompanha a velocidade do jogo.
 
