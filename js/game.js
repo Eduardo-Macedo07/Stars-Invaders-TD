@@ -66,6 +66,7 @@
       const [x1, y1] = points[i];
       const [x2, y2] = points[i + 1];
       const len = Math.hypot(x2 - x1, y2 - y1);
+      if (len < 0.01) continue;
       segs.push({ x1, y1, x2, y2, dx: (x2 - x1) / len, dy: (y2 - y1) / len, len, start: total });
       total += len;
     }
@@ -73,10 +74,14 @@
   }
   function posAt(path, d) {
     const segs = path.segs;
-    let s = segs[segs.length - 1];
-    for (let i = 0; i < segs.length; i++) {
-      if (d < segs[i].start + segs[i].len) { s = segs[i]; break; }
+    // busca binária: caminhos curvos têm centenas de trechos curtos
+    let lo = 0;
+    let hi = segs.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (d < segs[mid].start + segs[mid].len) hi = mid; else lo = mid + 1;
     }
+    const s = segs[lo];
     const k = Math.max(0, Math.min(d - s.start, s.len));
     return { x: s.x1 + s.dx * k, y: s.y1 + s.dy * k, a: Math.atan2(s.dy, s.dx) };
   }
