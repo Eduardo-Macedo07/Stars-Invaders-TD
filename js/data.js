@@ -7,28 +7,96 @@
 const WORLD_W = 1280;
 const WORLD_H = 720;
 
-// Cada setor tem um caminho fixo (pontos por onde os invasores passam).
-// O primeiro ponto é o portal de entrada; o último, a nave-mãe.
+// Cada setor tem 3 rotas, uma por dificuldade. Uma rota é uma lista de caminhos:
+// com mais de um caminho, os invasores entram por várias portas e se juntam no fim.
+// Em cada caminho, o 1º ponto é a entrada (portal) e o último é a nave-mãe
+// (todos os caminhos de uma rota terminam no mesmo ponto).
 const MAPS = [
   {
-    id: 'asteroides', name: 'Cinturão de Asteroides', accent: '#5fe8ff',
+    id: 'asteroides', name: 'Cinturão de Asteroides', theme: 'asteroides', accent: '#5fe8ff',
     desc: 'Rota sinuosa entre rochas flutuantes. Bom para começar.',
     bg: ['#0a1030', '#03050f'], nebula: ['#2a4aa0', '#5a2a90'],
-    path: [[-40, 130], [260, 130], [260, 420], [560, 420], [560, 170], [880, 170], [880, 560], [1130, 560]],
+    rotas: {
+      facil: [[[-40, 100], [200, 100], [200, 620], [420, 620], [420, 150], [620, 150], [620, 450], [820, 450], [820, 160], [990, 160], [990, 560], [1130, 560]]],
+      normal: [[[-40, 130], [260, 130], [260, 420], [560, 420], [560, 170], [880, 170], [880, 560], [1130, 560]]],
+      dificil: [
+        [[-40, 130], [560, 130], [560, 420], [880, 420], [880, 560], [1130, 560]],
+        [[-40, 620], [560, 620], [560, 420]],
+      ],
+    },
   },
   {
-    id: 'estacao', name: 'Estação Órbita-7', accent: '#ffb347',
+    id: 'estacao', name: 'Estação Órbita-7', theme: 'estacao', accent: '#ffb347',
     desc: 'Corredores de uma estação abandonada, com curvas fechadas.',
     bg: ['#1a1224', '#05030a'], nebula: ['#a0502a', '#5a2a60'],
-    path: [[-40, 610], [190, 610], [190, 150], [470, 150], [470, 520], [760, 520], [760, 210], [1040, 210], [1040, 640], [1160, 640]],
+    rotas: {
+      facil: [[[-40, 610], [190, 610], [190, 150], [470, 150], [470, 520], [760, 520], [760, 210], [1040, 210], [1040, 640], [1150, 640]]],
+      normal: [[[-40, 610], [190, 610], [190, 150], [640, 150], [640, 520], [1040, 520], [1040, 640], [1150, 640]]],
+      dificil: [
+        [[-40, 150], [470, 150], [470, 520], [1040, 520], [1040, 640], [1150, 640]],
+        [[860, -40], [860, 520]],
+      ],
+    },
   },
   {
-    id: 'nebulosa', name: 'Nebulosa Carmesim', accent: '#ff5a8a',
-    desc: 'Caminho longo dentro de uma nebulosa. Os invasores vêm em massa.',
+    id: 'bar', name: 'Cantina Estelar', theme: 'bar', accent: '#ff5ad8',
+    desc: 'Um bar espacial lotado. Os invasores passam entre as mesas e o balcão.',
+    rotas: {
+      facil: [[[-40, 90], [1040, 90], [1040, 260], [200, 260], [200, 430], [1040, 430], [1040, 610], [1110, 610]]],
+      normal: [[[-40, 360], [300, 360], [300, 120], [640, 120], [640, 600], [960, 600], [960, 360], [1130, 360]]],
+      dificil: [
+        [[-40, 200], [640, 200], [640, 360], [1130, 360]],
+        [[-40, 560], [640, 560], [640, 360]],
+      ],
+    },
+  },
+  {
+    id: 'corrida', name: 'Corrida Estelar', theme: 'corrida', accent: '#ff3b30',
+    desc: 'Uma pista de corrida no espaço. Os invasores aceleram pelas retas.',
+    bg: ['#08081a', '#020208'], nebula: ['#2a2aa0', '#a02a2a'],
+    rotas: {
+      facil: [[[-40, 620], [1000, 620], [1140, 520], [1140, 190], [1000, 90], [260, 90], [140, 190], [140, 330], [260, 410], [900, 410], [900, 260], [440, 260]]],
+      normal: [[[-40, 620], [1100, 620], [1100, 100], [200, 100], [200, 360], [860, 360]]],
+      dificil: [
+        [[-40, 620], [700, 620], [700, 360], [1020, 360]],
+        [[1320, 100], [700, 100], [700, 360]],
+      ],
+    },
+  },
+  {
+    id: 'marte', name: 'Deserto de Marte', theme: 'marte', accent: '#ff7a3a',
+    desc: 'Areia vermelha, crateras e cânions. Trilhas abertas e diagonais.',
+    rotas: {
+      facil: [[[-40, 160], [300, 160], [420, 560], [700, 560], [820, 160], [1060, 160], [1180, 420], [1000, 640], [830, 640]]],
+      normal: [[[-40, 360], [260, 360], [400, 140], [700, 140], [840, 560], [1100, 560]]],
+      dificil: [
+        [[-40, 600], [480, 600], [640, 340], [1100, 340]],
+        [[640, -40], [640, 340]],
+      ],
+    },
+  },
+  {
+    id: 'nebulosa', name: 'Nebulosa Carmesim', theme: 'nebulosa', accent: '#ff5a8a',
+    desc: 'Dentro de uma nebulosa. Os invasores vêm em massa.',
     bg: ['#2a0a1a', '#08020a'], nebula: ['#c02a5a', '#3a2aa0'],
-    path: [[640, -40], [640, 120], [150, 120], [150, 320], [1120, 320], [1120, 510], [300, 510], [300, 640], [560, 640]],
+    rotas: {
+      facil: [[[640, -40], [640, 120], [150, 120], [150, 320], [1120, 320], [1120, 510], [300, 510], [300, 640], [560, 640]]],
+      normal: [[[640, -40], [640, 140], [1100, 140], [1100, 420], [300, 420], [300, 640], [560, 640]]],
+      dificil: [
+        [[-40, 300], [300, 300], [300, 640], [560, 640]],
+        [[1320, 300], [900, 300], [900, 520], [560, 520], [560, 640]],
+      ],
+    },
   },
 ];
+
+// Dificuldades: multiplicam a vida dos invasores, os créditos iniciais, o casco e a recompensa.
+const DIFICULDADES = {
+  facil: { name: 'Fácil', color: '#5cff7a', hp: 0.8, money: 750, lives: 150, reward: 1.1 },
+  normal: { name: 'Normal', color: '#ffe81f', hp: 1, money: 650, lives: 100, reward: 1 },
+  dificil: { name: 'Difícil', color: '#ff3b30', hp: 1, money: 800, lives: 80, reward: 1.1 },
+};
+const DIF_ORDER = ['facil', 'normal', 'dificil'];
 
 // ------------------------------------------------------------
 // Defensores (personagens). range em unidades; cd = recarga do tiro em segundos.
@@ -245,6 +313,19 @@ const UNITS = {
     ],
   },
 };
+// Visual de cada caminho (acessório desenhado em js/art.js), na ordem dos caminhos.
+const PATH_LOOKS = {
+  viajante: ['canos', 'halo', 'visor'],
+  gosma: ['chifres', 'tentaculos', 'olhos'],
+  soldado: ['canos', 'luneta', 'mochila', 'estandarte'],
+  crio: ['cristais', 'canos', 'nevasca', 'runas'],
+  atiradora: ['luneta', 'canos', 'visor', 'medalhas'],
+  artilheiro: ['mochila', 'canos', 'tanques', 'escudo'],
+  piromante: ['chama', 'tanques', 'luneta', 'runas'],
+  tesla: ['bobinas', 'canos', 'antena', 'halo'],
+};
+for (const [type, looks] of Object.entries(PATH_LOOKS)) looks.forEach((l, i) => { UNITS[type].paths[i].look = l; });
+
 const UNIT_ORDER = ['viajante', 'gosma', 'soldado', 'crio', 'atiradora', 'artilheiro', 'piromante', 'tesla'];
 
 // Texto automático de um nível (quando não tem descrição própria).
@@ -298,7 +379,8 @@ const START_MONEY = 650;
 const START_LIVES = 100;
 
 // Monta a lista de grupos de uma onda: [tipo, quantidade, intervalo entre eles, atraso inicial].
-function buildWave(n, mapIndex) {
+function buildWave(n, mapIndex, dif) {
+  const D = DIFICULDADES[dif || 'normal'];
   const groups = [];
   const base = 6 + n * 2;
   groups.push(['drone', base, 0.8, 0]);
@@ -309,9 +391,9 @@ function buildWave(n, mapIndex) {
   if (n >= 14) groups.push(['blindado', Math.floor(n * 0.5), 1.1, 16]);
   if (n === 10 || n === 20) groups.push(['cruzador', n === 20 ? 2 : 1, 6, 12]);
   if (n === 15) groups.push(['cruzador', 1, 1, 20]);
-  // vida cresce a cada onda (e um pouco a cada setor)
-  const hpMul = (1 + (n - 1) * 0.24 + (n - 1) * (n - 1) * 0.016) * (1 + mapIndex * 0.25);
+  // vida cresce a cada onda, um pouco a cada setor e com a dificuldade
+  const hpMul = (1 + (n - 1) * 0.24 + (n - 1) * (n - 1) * 0.016) * (1 + mapIndex * 0.12) * D.hp;
   // o chefão cresce mais devagar que os invasores comuns
-  const bossMul = (1 + (n - 1) * 0.2) * (1 + mapIndex * 0.15);
+  const bossMul = (1 + (n - 1) * 0.2) * (1 + mapIndex * 0.08) * D.hp;
   return { groups, hpMul, bossMul };
 }
