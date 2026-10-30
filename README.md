@@ -44,17 +44,42 @@ Cada herói só pode ser posicionado uma vez.
 Drones, interceptadores rápidos, tanques blindados, enxames de mini-drones e o
 **Cruzador Alienígena**, chefão das ondas 10, 15 e 20.
 
-## Setores
+## Setores e dificuldades
+
+Seis setores, liberados em sequência (vencer um setor em qualquer dificuldade libera o próximo):
 
 1. Cinturão de Asteroides
 2. Estação Órbita-7
-3. Nebulosa Carmesim
+3. Cantina Estelar (um bar espacial)
+4. Corrida Estelar (pista de corrida no espaço)
+5. Deserto de Marte
+6. Nebulosa Carmesim
+
+Cada setor tem **três rotas**, uma por dificuldade:
+
+| Dificuldade | Rota | Créditos | Casco |
+| --- | --- | --- | --- |
+| Fácil | longa e sinuosa; invasores com menos vida | 750 | 150 |
+| Normal | média | 650 | 100 |
+| Difícil | curta e com **duas entradas** | 800 | 80 |
+
+A recarga das habilidades dos heróis só anda durante as ondas e acompanha a velocidade do jogo.
+
+## Visual
+
+- Interface minimalista em amarelo e preto, no estilo das aberturas de space opera.
+- Personagens e invasores em **pixel art** (dá para trocar para arte vetorial no menu: "Arte: Pixel").
+- A aparência de cada personagem muda bastante com a evolução: armadura na cor do caminho,
+  ombreiras, arma maior e um acessório por caminho; no nível 5, asas de energia, halo e coroa.
+- Dá para colocar suas próprias imagens (por exemplo, geradas no ChatGPT): veja
+  [`assets/LEIA-ME-sprites.md`](assets/LEIA-ME-sprites.md).
 
 ## Estrutura
 
 - `index.html`: telas e HUD
 - `style.css`: visual sci-fi
 - `js/data.js`: setores, defensores, invasores e ondas (bom lugar para balancear)
-- `js/art.js`: todos os desenhos, feitos por código
+- `js/art.js`: todos os desenhos, feitos por código, e o modo pixel art
+- `js/sprites.js` e `assets/sprites/`: imagens opcionais que substituem a arte gerada
 - `js/audio.js`: efeitos e música gerados com Web Audio
 - `js/game.js`: regras, laço do jogo e interface
