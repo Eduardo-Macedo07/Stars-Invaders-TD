@@ -1,0 +1,9 @@
+# Sistema e editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Variáveis de ambiente e logs
+.env
+*.log
